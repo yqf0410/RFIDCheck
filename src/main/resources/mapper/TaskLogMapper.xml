@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.project.rfidcheck.mapper.TaskLogMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.project.rfidcheck.entity.TaskLog">
+        <id column="id" property="id" />
+        <result column="name" property="name" />
+        <result column="flag" property="flag" />
+        <result column="data" property="data" />
+        <result column="message" property="message" />
+        <result column="request_date" property="requestDate" />
+        <result column="response_date" property="responseDate" />
+    </resultMap>
+
+</mapper>

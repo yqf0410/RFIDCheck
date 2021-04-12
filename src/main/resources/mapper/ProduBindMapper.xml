@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.project.rfidCheck.mapper.ProduBindMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.project.rfidCheck.entity.ProduBind">
+        <id column="id" property="id" />
+        <result column="seq" property="seq" />
+        <result column="no_code" property="noCode" />
+        <result column="produ_code" property="produCode" />
+        <result column="work_cell_code" property="workCellCode" />
+        <result column="create_date" property="createDate" />
+        <result column="bar_code" property="barCode" />
+        <result column="rfid_uid" property="rfidUid" />
+        <result column="rfid_data" property="rfidData" />
+        <result column="bind_state" property="bindState" />
+        <result column="bind_type" property="bindType" />
+        <result column="bind_date" property="bindDate" />
+    </resultMap>
+
+</mapper>
