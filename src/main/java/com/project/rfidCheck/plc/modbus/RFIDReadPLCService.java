@@ -1,10 +1,14 @@
 package com.project.rfidCheck.plc.modbus;
 
+import cn.hutool.core.util.CharUtil;
+import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.core.util.HexUtil;
+import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.mysql.cj.util.StringUtils;
 import com.project.rfidCheck.entity.ProduBind;
 import com.project.rfidCheck.entity.ProduCheck;
+import com.project.rfidCheck.mapper.ProduBindMapper;
 import com.project.rfidCheck.mapper.ProduCheckMapper;
 import com.project.rfidCheck.service.ProduBindService;
 import com.project.rfidCheck.service.ProduCheckService;
@@ -15,8 +19,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import java.nio.charset.Charset;
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.List;
 
 @Configuration
 @EnableScheduling
@@ -37,12 +43,17 @@ public class RFIDReadPLCService {
     @Autowired
     private TCPWriter tcpWriter;
 
+    @Autowired
+    private ProduBindMapper produBindMapper;
+
     //3.添加定时任务
     @Scheduled(fixedRate = 1000)
     private void configureTasks() {
         Integer flag = 2;
-        String message = "";
-        String data = "";
+        String message = "校验通过";
+        String returnResult = "OK";
+        String workCell = "";
+        Date sDate = new Date();
         try {
             System.err.println("执行静态定时任务时间: " + LocalDateTime.now());
             //读取高电平
@@ -57,26 +68,42 @@ public class RFIDReadPLCService {
                 //[2,3,c8,0,1,0,2,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
                 ByteQueue rfidByte = tcpReader.modbusReadWithTCP(CommandConstant.CHECK_RFID, 100);
 
-                String workCell = String.valueOf(cellByte.peek(3, 2)[1]);
-                String uid = toString(uidByte.peek(3, 40));
+                workCell = String.valueOf(cellByte.peek(3, 2)[1]);
+                String uid = hexToString(uidByte.peek(3, 32));
                 String rfid = toString(rfidByte.peek(3, 200));
 
                 QueryWrapper<ProduBind> queryWrapper = new QueryWrapper<>();
-                queryWrapper.eq("bind_state", "1");
-                queryWrapper.eq("rfid_uid", uid);
                 queryWrapper.eq("work_cell_code", workCell);
-                queryWrapper.eq("rfid_data", rfid);
-
-                ProduBind produBind = produBindService.getOne(queryWrapper);
+                queryWrapper.orderBy(true, true, "create_date");
+                List<ProduBind> list = produBindMapper.selectList(queryWrapper);
+                if (list.size() == 0) {
+                    throw new Exception("工位【" + workCell + "未绑定！");
+                }
+                ProduBind produBind = list.get(0);
                 ProduCheck produCheck = new ProduCheck();
+                produCheck.setId(IdUtil.fastUUID().replace("-", ""));
                 produCheck.setCheckDate(new Date());
                 produCheck.setCheckState(1);
-                int checkResult = 0;
-                String returnResult = "NG";
-                if (produBind != null) {
-                    checkResult = 1;
-                    returnResult = "OK";
-                    produCheck.setProduBindId(produBind.getId());
+                produCheck.setProduBindId(produBind.getId());
+                int checkResult = 1;
+                flag = 1;
+                if (produBind == null) {
+                    checkResult = 0;
+                    returnResult = "NG";
+                    message = "绑定记录不存在";
+                    flag = 0;
+                }
+                if(!produBind.getRfidUid().equals(uid)){
+                    checkResult = 0;
+                    returnResult = "NG";
+                    message = "RFID UID不匹配";
+                    flag = 0;
+                }
+                if(!produBind.getRfidData().equals(rfid)){
+                    checkResult = 0;
+                    returnResult = "NG";
+                    message = "RFID 数据不匹配";
+                    flag = 0;
                 }
                 produCheck.setCheckRfidData(rfid);
                 produCheck.setCheckRfidUid(uid);
@@ -94,7 +121,7 @@ public class RFIDReadPLCService {
             message = e.getMessage();
         } finally {
             if (flag != 2) {
-                taskLogService.saveLog("校验RFID信息", flag, data, message);
+                taskLogService.saveLog("校验RFID信息", flag, workCell, message, sDate);
             }
         }
     }
@@ -114,5 +141,18 @@ public class RFIDReadPLCService {
             }
         }
         return hexString.toString();
+    }
+
+    public static String hexToString(byte[] byteArray) {
+        char[] chars = HexUtil.encodeHex(byteArray);
+        final StringBuilder hexString = new StringBuilder();
+        char[] nullchar = {0, 0, 0, 0};
+        //23,67,89
+        for (int i = 0; i < byteArray.length; i++) {
+            if (i % 4 == 2 || i % 4 == 3) {
+                hexString.append(chars[i]);
+            }
+        }
+        return hexString.toString().toUpperCase();
     }
 }

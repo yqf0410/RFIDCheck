@@ -3,11 +3,9 @@ package com.project.rfidCheck.controller;
 import com.project.rfidCheck.service.ProduBindService;
 import com.project.rfidCheck.service.ProduCheckService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -21,16 +19,21 @@ public class PadController {
 
     @PostMapping("/selectUnBindProdu")
     @CrossOrigin
-    public String selectProdu(){
+    public String selectProdu() {
         return produBindService.selectUnBindProdu();
+    }
+
+    @PostMapping("/checkBindRfid")
+    @CrossOrigin
+    public String saveUser(@RequestParam Map<String, String> map) {
+        return produBindService.checkBindRfid(map);
     }
 
     @PostMapping("/saveBindProdu")
     @CrossOrigin
-    public String saveBindProdu(Map<String, String> map){
+    public String saveBindProdu(@RequestParam Map<String, String> map) {
         return produBindService.saveBindProdu(map);
     }
-
 
 
 }

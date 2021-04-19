@@ -3,6 +3,7 @@ package com.project.rfidCheck.service;
 import com.project.rfidCheck.entity.TaskLog;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.Date;
 import java.util.Map;
 
 /**
@@ -17,5 +18,5 @@ public interface TaskLogService extends IService<TaskLog> {
 
     String selectTaskLog(Map<String, String> map);
 
-    void saveLog(String interfaceName, Integer flag, String data, String message);
+    void saveLog(String interfaceName, Integer flag, String data, String message, Date sDate);
 }

@@ -51,7 +51,6 @@ public class ProduBindController {
     @CrossOrigin
     public String importProdu(@RequestBody List<Map<String, String>> list) {
         return produBindService.importProdu(list);
-
     }
 
     @PostMapping("/selectBindRecord")
@@ -59,9 +58,13 @@ public class ProduBindController {
     public String selectBindRecord(@RequestBody Map<String, String> map) {
         String returnMapStr = produBindService.selectBindRecord(map);
         return returnMapStr;
-
     }
 
+    @PostMapping("/reset")
+    @CrossOrigin
+    public String resetBind(@RequestBody Map<String, String> map) {
+        return produBindService.resetBind(map);
+    }
 
 
 }

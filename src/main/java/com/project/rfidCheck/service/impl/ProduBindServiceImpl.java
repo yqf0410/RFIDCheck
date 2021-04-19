@@ -6,13 +6,16 @@ import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.json.JSONObject;
 import com.alibaba.druid.support.json.JSONUtils;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.mysql.cj.xdevapi.JsonArray;
 import com.project.rfidCheck.entity.ProduBind;
+import com.project.rfidCheck.entity.ProduCheck;
 import com.project.rfidCheck.mapper.ProduBindMapper;
+import com.project.rfidCheck.mapper.ProduCheckMapper;
 import com.project.rfidCheck.service.ProduBindService;
 import net.minidev.json.JSONArray;
 import org.apache.commons.lang3.StringUtils;
@@ -36,6 +39,8 @@ public class ProduBindServiceImpl extends ServiceImpl<ProduBindMapper, ProduBind
 
     @Autowired
     private ProduBindMapper produBindMapper;
+    @Autowired
+    private ProduCheckMapper produCheckMapper;
 
     @Override
     public String selectProdu(Map<String, String> map) {
@@ -70,7 +75,7 @@ public class ProduBindServiceImpl extends ServiceImpl<ProduBindMapper, ProduBind
             rowData.put("noCode", pb.getNoCode());
             rowData.put("produCode", pb.getProduCode());
             rowData.put("barCode", pb.getBarCode());
-            rowData.put("createDate", DateUtil.format(pb.getCreateDate(), "yyyy/MM/dd hh:mm:ss"));
+            rowData.put("createDate", DateUtil.format(pb.getCreateDate(), "yyyy/MM/dd HH:mm:ss"));
             rowData.put("bindState", pb.getBindState().toString());
             gridData.add(rowData);
         }
@@ -85,6 +90,7 @@ public class ProduBindServiceImpl extends ServiceImpl<ProduBindMapper, ProduBind
         produBind.setSeq(map.get("seq").toString());
         produBind.setNoCode(map.get("noCode").toString());
         produBind.setProduCode(map.get("produCode").toString());
+        produBind.setCreateDate(new Date());
         if (map.containsKey("id") && map.get("id") != null && map.get("id").toString() != "") {
             produBind.setId(map.get("id"));
             produBindMapper.updateById(produBind);
@@ -120,6 +126,7 @@ public class ProduBindServiceImpl extends ServiceImpl<ProduBindMapper, ProduBind
                 produBind.setSeq(map.get("上料顺序").toString());
                 produBind.setNoCode(map.get("单号").toString());
                 produBind.setProduCode(map.get("零件代号").toString());
+                produBind.setCreateDate(new Date());
                 produBindMapper.insert(produBind);
             } else {
                 produBind.setSeq(map.get("上料顺序").toString());
@@ -146,7 +153,7 @@ public class ProduBindServiceImpl extends ServiceImpl<ProduBindMapper, ProduBind
             rowData.put("noCode", pb.getNoCode());
             rowData.put("produCode", pb.getProduCode());
             rowData.put("barCode", pb.getBarCode());
-            rowData.put("createDate", DateUtil.format(pb.getCreateDate(), "yyyy/MM/dd hh:mm:ss"));
+            rowData.put("createDate", DateUtil.format(pb.getCreateDate(), "yyyy/MM/dd HH:mm:ss"));
             rowData.put("bindState", pb.getBindState().toString());
             returnList.add(rowData);
         }
@@ -190,7 +197,16 @@ public class ProduBindServiceImpl extends ServiceImpl<ProduBindMapper, ProduBind
             rowData.put("produCode", pb.getProduCode());
             rowData.put("barCode", pb.getBarCode());
             rowData.put("rfidUid", pb.getRfidUid());
-            rowData.put("bindDate", DateUtil.format(pb.getBindDate(), "yyyy/MM/dd hh:mm:ss"));
+            rowData.put("bindDate", DateUtil.format(pb.getBindDate(), "yyyy/MM/dd HH:mm:ss"));
+            List<ProduCheck> produChecks = produCheckMapper.selectList(new QueryWrapper<ProduCheck>().eq("produ_bind_id",pb.getId()));
+            if(produChecks.size() > 0){
+                rowData.put("checkState", produChecks.get(0).getCheckState().toString());
+            }else{
+                rowData.put("checkState", "0");
+            }
+            if (StringUtils.isNotEmpty(map.get("checkState")) && !map.get("checkState").equals(rowData.get("checkState"))) {
+                continue;
+            }
             gridData.add(rowData);
         }
         returnMap.put("items", gridData);
@@ -200,21 +216,75 @@ public class ProduBindServiceImpl extends ServiceImpl<ProduBindMapper, ProduBind
 
     @Override
     public String saveBindProdu(Map<String, String> map) {
+        Map<String, String> returnMap = new HashMap<>();
         QueryWrapper<ProduBind> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("no_code",map.get("noCode"));
-        ProduBind produBind = produBindMapper.selectOne(queryWrapper);
-        if(produBind == null){
-            return "零件不存在，请检查！";
+        queryWrapper.eq("work_cell_code",map.get("workCellCode"));
+        List<ProduBind> produBinds = produBindMapper.selectList(queryWrapper);
+        for(ProduBind produBind:produBinds){
+            QueryWrapper<ProduCheck> queryWrapper1 = new QueryWrapper<>();
+            queryWrapper1.eq("produ_bind_id",produBind.getId());
+            ProduCheck produCheck = produCheckMapper.selectOne(queryWrapper1);
+            if(produCheck == null || produCheck.getCheckState().equals(0)){
+                returnMap.put("flag","false");
+                returnMap.put("data","此工位已绑定且未校验！");
+                return JSONUtils.toJSONString(returnMap);
+            }
         }
-        produBind.setWorkCellCode(map.get("workCellCode"));
-        produBind.setRfidUid(map.get("rfidUid"));
-        produBind.setRfidData(map.get("rfidData"));
-        produBind.setBindState(1);
-        produBind.setBindDate(new Date());
-        produBind.setBindType(Integer.parseInt(map.get("bindType")));
-        produBindMapper.update(produBind,queryWrapper);
-        return "success";
+        ProduBind produBind = new ProduBind();
+        if(StringUtils.isNotEmpty(map.get("selectId"))){
+            produBind = produBindMapper.selectById(map.get("selectId"));
+            produBind.setWorkCellCode(map.get("workCellCode"));
+            produBind.setRfidUid(map.get("rfidUid").replace(":",""));
+            produBind.setRfidData(map.get("rfidData"));
+            produBind.setBindState(1);
+            produBind.setBindDate(new Date());
+            produBind.setBindType(Integer.parseInt(map.get("bindType")));
+            produBindMapper.updateById(produBind);
+        }else{
+            produBind.setId(IdUtil.fastUUID().replace("-", ""));
+            produBind.setNoCode(map.get("noCode"));
+            produBind.setBarCode(map.get("barCode"));
+            produBind.setProduCode(map.get("produCode"));
+            produBind.setWorkCellCode(map.get("workCellCode"));
+            produBind.setRfidUid(map.get("rfidUid").replace(":",""));
+            produBind.setRfidData(map.get("rfidData"));
+            produBind.setBindState(1);
+            produBind.setBindDate(new Date());
+            produBind.setBindType(Integer.parseInt(map.get("bindType")));
+            produBind.setCreateDate(new Date());
+            produBindMapper.insert(produBind);
+        }
+
+        returnMap.put("flag","true");
+        returnMap.put("data","绑定成功！");
+        return JSONUtils.toJSONString(returnMap);
     }
 
+    @Override
+    public String checkBindRfid(Map<String, String> map) {
+        QueryWrapper<ProduBind> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("bar_code",map.get("barCode"));
+        ProduBind produBind = produBindMapper.selectOne(queryWrapper);
+        String result;
+        if(produBind == null){
+            result = "0";
+        }else{
+            result = produBind.getBindState().toString();
+        }
+        Map<String, String> returnMap = new HashMap<>();
+        returnMap.put("data",result);
+        return JSONUtils.toJSONString(returnMap);
+    }
+
+    @Override
+    public String resetBind(Map<String, String> map) {
+        ProduBind produBind = produBindMapper.selectById(map.get("id").toString());
+        produBind.setBindDate(null);
+        produBind.setBindType(null);
+        produBind.setBindState(0);;
+        produBind.setWorkCellCode(null);
+        produBindMapper.updateById(produBind);
+        return "重置成功";
+    }
 
 }

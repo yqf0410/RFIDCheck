@@ -30,4 +30,8 @@ public interface ProduBindService extends IService<ProduBind> {
 
     String saveBindProdu(Map<String, String> map);
 
+    String checkBindRfid(Map<String, String> map);
+
+    String resetBind(Map<String, String> map);
+
 }

@@ -70,8 +70,7 @@ public class ProduCheckServiceImpl extends ServiceImpl<ProduCheckMapper, ProduCh
             Map<String, String> rowData = new HashMap<>();
             rowData.put("id",pc.getId());
             ProduBind bind = produBindMapper.selectById(pc.getProduBindId());
-            rowData.put("seq",pc.getProduBindId());
-            rowData.put("checkDate",DateUtil.format(pc.getCheckDate(),"yyyy/MM/dd hh:mm:ss"));
+            rowData.put("checkDate",DateUtil.format(pc.getCheckDate(),"yyyy/MM/dd HH:mm:ss"));
             rowData.put("checkWorkCell",pc.getCheckWorkCell());
             rowData.put("checkRfidUid",pc.getCheckRfidUid());
             rowData.put("checkState",pc.getCheckState().toString());
@@ -80,9 +79,10 @@ public class ProduCheckServiceImpl extends ServiceImpl<ProduCheckMapper, ProduCh
             if(pb != null){
                 rowData.put("seq",pb.getSeq());
                 rowData.put("bindType",pb.getBindType().toString());
+                rowData.put("noCode",pb.getNoCode());
                 rowData.put("produCode",pb.getProduCode());
                 rowData.put("rfidUid",pb.getRfidUid());
-                rowData.put("bindDate",DateUtil.format(pb.getBindDate(),"yyyy/MM/dd hh:mm:ss"));
+                rowData.put("bindDate",DateUtil.format(pb.getBindDate(),"yyyy/MM/dd HH:mm:ss"));
             }
             gridData.add(rowData);
         }

@@ -37,9 +37,6 @@ public class TaskLogServiceImpl extends ServiceImpl<TaskLogMapper, TaskLog> impl
     @Override
     public String selectTaskLog(Map<String, String> map) {
         QueryWrapper<TaskLog> queryWrapper = new QueryWrapper<>();
-        if(StringUtils.isNotEmpty(map.get("taskName"))){
-            queryWrapper.eq("name",map.get("taskName"));
-        }
         if(StringUtils.isNotEmpty(map.get("requestDateS"))){
             queryWrapper.gt("request_date", DateUtil.parse(map.get("requestDateS")));
         }
@@ -63,10 +60,10 @@ public class TaskLogServiceImpl extends ServiceImpl<TaskLogMapper, TaskLog> impl
         for(TaskLog tl:result.getRecords()){
             Map<String, String> rowData = new HashMap<>();
             rowData.put("id",tl.getId());
-            rowData.put("taskName",tl.getName());
+            rowData.put("name",tl.getName());
             rowData.put("flag",tl.getFlag().toString());
-            rowData.put("requestDate",DateUtil.format(tl.getRequestDate(),"yyyy/MM/dd hh:mm:ss"));
-            rowData.put("responseDate",DateUtil.format(tl.getResponseDate(),"yyyy/MM/dd hh:mm:ss"));
+            rowData.put("requestDate",DateUtil.format(tl.getRequestDate(),"yyyy/MM/dd HH:mm:ss"));
+            rowData.put("responseDate",DateUtil.format(tl.getResponseDate(),"yyyy/MM/dd HH:mm:ss"));
             rowData.put("message",tl.getMessage());
             rowData.put("data",tl.getData());
             gridData.add(rowData);
@@ -78,7 +75,7 @@ public class TaskLogServiceImpl extends ServiceImpl<TaskLogMapper, TaskLog> impl
 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
-    public void saveLog(String interfaceName, Integer flag, String data, String message) {
+    public void saveLog(String interfaceName, Integer flag, String data, String message, Date sDate) {
         TaskLog taskLog = new TaskLog();
         taskLog.setName(interfaceName);
         taskLog.setFlag(flag);
@@ -86,6 +83,8 @@ public class TaskLogServiceImpl extends ServiceImpl<TaskLogMapper, TaskLog> impl
         taskLog.setMessage(message);
         taskLog.setResponseDate(new Date());
         taskLog.setId(IdUtil.fastUUID().replace("-", ""));
+        taskLog.setRequestDate(sDate);
+        taskLog.setRequestDate(new Date());
         taskLogMapper.insert(taskLog);
     }
 }
