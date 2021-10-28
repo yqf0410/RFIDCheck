@@ -8,8 +8,12 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.mysql.cj.util.StringUtils;
 import com.project.rfidCheck.entity.ProduBind;
 import com.project.rfidCheck.entity.ProduCheck;
+import com.project.rfidCheck.entity.Task;
+import com.project.rfidCheck.entity.TaskBind;
 import com.project.rfidCheck.mapper.ProduBindMapper;
 import com.project.rfidCheck.mapper.ProduCheckMapper;
+import com.project.rfidCheck.mapper.TaskBindMapper;
+import com.project.rfidCheck.mapper.TaskMapper;
 import com.project.rfidCheck.service.ProduBindService;
 import com.project.rfidCheck.service.ProduCheckService;
 import com.project.rfidCheck.service.TaskLogService;
@@ -46,9 +50,84 @@ public class RFIDReadPLCService {
     @Autowired
     private ProduBindMapper produBindMapper;
 
+    @Autowired
+    private TaskBindMapper taskBindMapper;
+
+    @Autowired
+    private TaskMapper taskMapper;
+
     //3.添加定时任务
-    @Scheduled(fixedRate = 1000)
-    private void configureTasks() {
+    //@Scheduled(fixedRate = 1000)
+    private void checkTask() {
+        Integer flag = 2;
+        String message = "校验通过";
+        String returnResult = "OK";
+        String workCell = "";
+        int checkState = 1;
+        Date sDate = new Date();
+        try {
+            System.err.println("执行静态定时任务时间: " + LocalDateTime.now());
+            //读取高电平
+            //[2,3,2,0,0]
+            ByteQueue flagByte = tcpReader.modbusReadWithTCP(CommandConstant.CHECK_FLAG, 1);
+            if (flagByte.peek(4) == 1) {
+                //读取RFID信息校验
+                //[2,3,2,0,11]
+                ByteQueue cellByte = tcpReader.modbusReadWithTCP(CommandConstant.CHECK_WORK_CELL, 1);
+                //[2,3,28,0,1,0,2,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                ByteQueue uidByte = tcpReader.modbusReadWithTCP(CommandConstant.CHECK_UID, 20);
+                //[2,3,c8,0,1,0,2,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                ByteQueue rfidByte = tcpReader.modbusReadWithTCP(CommandConstant.CHECK_RFID, 100);
+
+                workCell = String.valueOf(cellByte.peek(3, 2)[1]);
+                String uid = hexToString(uidByte.peek(3, 32));
+                String rfid = toString(rfidByte.peek(3, 200));
+
+                QueryWrapper<TaskBind> queryWrapper = new QueryWrapper<>();
+                queryWrapper.eq("rfid_uid", uid);
+                queryWrapper.eq("check_state", 0);
+                queryWrapper.orderBy(true, true, "create_date");
+                List<TaskBind> list = taskBindMapper.selectList(queryWrapper);
+                flag = 1;
+                if (list.size() == 0) {
+                    checkState = 2;
+                    returnResult = "NG";
+                    message = "绑定记录不存在";
+                    flag = 0;
+                }
+                TaskBind taskBind = list.get(0);
+                Task task = taskMapper.selectById(taskBind.getTaskId());
+                if(!task.getEquipCode().equals(workCell)){
+                    checkState = 2;
+                    returnResult = "NG";
+                    message = "机床与绑定不匹配";
+                    flag = 0;
+                }
+                taskBind.setCheckDate(new Date());
+                taskBind.setCheckState(checkState);
+                taskBind.setRfidUid(uid);
+                taskBind.setRfidData(rfid);
+                taskBind.setCheckMessage(message);
+                taskBindMapper.updateById(taskBind);
+                //写入结果到PLC
+                byte[] cc = returnResult.getBytes();
+                int v1 = cc[0] >= 0 ? ((int) (cc[0])) : cc[0] + 256;
+                int v2 = cc[1] >= 0 ? ((int) (cc[1])) : cc[1] + 256;
+                tcpWriter.modbusWriteWithTCP(CommandConstant.CHECK_RESULT, new short[]{(short) (v1 * 256 + v2)});
+            }
+
+        } catch (Exception e) {
+            message = e.getMessage();
+        } finally {
+            if (flag != 2) {
+                taskLogService.saveLog("校验RFID信息", flag, workCell, message, sDate);
+            }
+        }
+    }
+
+    //3.添加定时任务
+    //@Scheduled(fixedRate = 1000)
+    private void checkProdu() {
         Integer flag = 2;
         String message = "校验通过";
         String returnResult = "OK";

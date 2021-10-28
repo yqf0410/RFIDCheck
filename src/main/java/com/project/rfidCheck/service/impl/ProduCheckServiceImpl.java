@@ -69,7 +69,6 @@ public class ProduCheckServiceImpl extends ServiceImpl<ProduCheckMapper, ProduCh
         for(ProduCheck pc:result.getRecords()){
             Map<String, String> rowData = new HashMap<>();
             rowData.put("id",pc.getId());
-            ProduBind bind = produBindMapper.selectById(pc.getProduBindId());
             rowData.put("checkDate",DateUtil.format(pc.getCheckDate(),"yyyy/MM/dd HH:mm:ss"));
             rowData.put("checkWorkCell",pc.getCheckWorkCell());
             rowData.put("checkRfidUid",pc.getCheckRfidUid());

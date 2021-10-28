@@ -2,6 +2,7 @@ package com.project.rfidCheck.controller;
 
 import com.project.rfidCheck.service.ProduBindService;
 import com.project.rfidCheck.service.ProduCheckService;
+import com.project.rfidCheck.service.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,8 +15,11 @@ public class PadController {
 
     @Autowired
     private ProduBindService produBindService;
+
     @Autowired
-    private ProduCheckService produCheckService;
+    private TaskService taskService;
+
+    //PRODU
 
     @PostMapping("/selectUnBindProdu")
     @CrossOrigin
@@ -25,7 +29,7 @@ public class PadController {
 
     @PostMapping("/checkBindRfid")
     @CrossOrigin
-    public String saveUser(@RequestParam Map<String, String> map) {
+    public String checkBindRfid(@RequestParam Map<String, String> map) {
         return produBindService.checkBindRfid(map);
     }
 
@@ -35,5 +39,23 @@ public class PadController {
         return produBindService.saveBindProdu(map);
     }
 
+    //TASK
 
+    @PostMapping("/selectTaskList")
+    @CrossOrigin
+    public String selectTaskList(){
+        return taskService.selectTaskList();
+    }
+
+    @PostMapping("/saveTaskBind")
+    @CrossOrigin
+    public String saveTaskBind(@RequestParam Map<String, String> map) {
+        return taskService.saveTaskBind(map);
+    }
+
+    @PostMapping("/selectTaskDetail")
+    @CrossOrigin
+    public String selectTaskDetail(@RequestParam Map<String, String> map) {
+        return taskService.selectTaskDetail(map);
+    }
 }
