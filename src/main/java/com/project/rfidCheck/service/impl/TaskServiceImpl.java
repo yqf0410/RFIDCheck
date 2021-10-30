@@ -71,6 +71,12 @@ public class TaskServiceImpl extends ServiceImpl<TaskMapper, Task> implements Ta
             Integer finishQty = taskBindMapper.selectList(new QueryWrapper<TaskBind>().eq("task_id",t.getId()).eq("check_state",1)).size();;
             rowData.put("finishQty", finishQty.toString());
             rowData.put("createDate", DateUtil.format(t.getCreateDate(), "yyyy/MM/dd HH:mm:ss"));
+            rowData.put("his","false");
+            for(Map<String, String> row:gridData){
+                if(row.get("equipCode").equals(rowData.get("equipCode"))){
+                    rowData.put("his","true");
+                }
+            }
             gridData.add(rowData);
         }
         returnMap.put("items", gridData);
@@ -104,6 +110,10 @@ public class TaskServiceImpl extends ServiceImpl<TaskMapper, Task> implements Ta
 
     @Override
     public String daleteTask(Map<String, String> map) {
+        //先删除taskBind
+        Map deleteBindMap = new HashMap();
+        deleteBindMap.put("task_id",map.get("id"));
+        taskBindMapper.deleteByMap(deleteBindMap);
         taskMapper.deleteById(map.get("id"));
         return "删除成功";
     }
@@ -186,10 +196,10 @@ public class TaskServiceImpl extends ServiceImpl<TaskMapper, Task> implements Ta
     @Override
     public String selectTaskList() {
         QueryWrapper<Task> queryWrapper = new QueryWrapper<>();
-        queryWrapper.orderBy(true, true, "create_date");
+        queryWrapper.orderBy(true, false, "create_date");
         List<Task> list = taskMapper.selectList(queryWrapper);
         List<Map<String, String>> returnList = new ArrayList<>();
-        for (Task t : list) {
+        out: for (Task t : list) {
             Map<String, String> rowData = new HashMap<>();
             rowData.put("id", t.getId());
             rowData.put("equipCode", t.getEquipCode());
@@ -197,12 +207,14 @@ public class TaskServiceImpl extends ServiceImpl<TaskMapper, Task> implements Ta
             rowData.put("qty", t.getQty().toString());
             Integer bindQty = taskBindMapper.selectList(new QueryWrapper<TaskBind>().eq("task_id",t.getId())).size();
             rowData.put("bindQty",bindQty.toString());
-            if(bindQty == t.getQty()){
-                continue;
-            }
             Integer finishQty = taskBindMapper.selectList(new QueryWrapper<TaskBind>().eq("task_id",t.getId()).eq("check_state",1)).size();;
             rowData.put("finishQty", finishQty.toString());
             rowData.put("createDate", DateUtil.format(t.getCreateDate(), "yyyy/MM/dd HH:mm:ss"));
+            for(Map<String, String> row:returnList){
+                if(row.get("equipCode").equals(rowData.get("equipCode"))){
+                    continue out;
+                }
+            }
             returnList.add(rowData);
         }
         return JSONUtils.toJSONString(returnList);
@@ -236,7 +248,7 @@ public class TaskServiceImpl extends ServiceImpl<TaskMapper, Task> implements Ta
         TaskBind taskBind = new TaskBind();
         taskBind.setId(IdUtil.fastUUID().replace("-", ""));
         taskBind.setTaskId(task.getId());
-        taskBind.setRfidUid(map.get("rfidUid"));
+        taskBind.setRfidUid(map.get("rfidUid").replace(":",""));
         taskBind.setRfidData(map.get("rfidData"));
         taskBindMapper.insert(taskBind);
 
@@ -260,4 +272,34 @@ public class TaskServiceImpl extends ServiceImpl<TaskMapper, Task> implements Ta
         return JSONUtils.toJSONString(rowData);
     }
 
+    public String saveTaskPad(Map<String, String> map) {
+        Map<String, String> returnMap = new HashMap<>();
+        String message = saveTask(map);
+        if("success".equals(message)){
+            returnMap.put("flag","true");
+            returnMap.put("data","保存成功");
+        }else{
+            returnMap.put("flag","error");
+            returnMap.put("data",message);
+        }
+        return JSONUtils.toJSONString(returnMap);
+    }
+    @Override
+    public String selectMaxTaskByMrl(Map<String, String> map) {
+        QueryWrapper<Task> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("produ_lot_code", map.get("produLotCode") );
+        queryWrapper.orderBy(true, false, "create_date");
+        List<Task> tasks = taskMapper.selectList(queryWrapper);
+        Map<String, String> rowData = new HashMap<>();
+        if(tasks.size() > 0) {
+            Task task = tasks.get(0);
+            rowData.put("taskId", task.getId());
+            rowData.put("produLotCode", task.getProduLotCode());
+            rowData.put("equipCode", task.getEquipCode());
+            rowData.put("qty", task.getQty().toString());
+            Integer bindQty = taskBindMapper.selectList(new QueryWrapper<TaskBind>().eq("task_id", task.getId())).size();
+            rowData.put("bindQty", bindQty.toString());
+        }
+        return JSONUtils.toJSONString(rowData);
+    }
 }

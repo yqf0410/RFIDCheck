@@ -57,7 +57,7 @@ public class RFIDReadPLCService {
     private TaskMapper taskMapper;
 
     //3.添加定时任务
-    //@Scheduled(fixedRate = 1000)
+    @Scheduled(fixedRate = 1000)
     private void checkTask() {
         Integer flag = 2;
         String message = "校验通过";
@@ -85,37 +85,36 @@ public class RFIDReadPLCService {
 
                 QueryWrapper<TaskBind> queryWrapper = new QueryWrapper<>();
                 queryWrapper.eq("rfid_uid", uid);
-                queryWrapper.eq("check_state", 0);
+                queryWrapper.in("check_state", new Object[]{0,2});
                 queryWrapper.orderBy(true, true, "create_date");
                 List<TaskBind> list = taskBindMapper.selectList(queryWrapper);
                 flag = 1;
                 if (list.size() == 0) {
-                    checkState = 2;
                     returnResult = "NG";
                     message = "绑定记录不存在";
                     flag = 0;
+                }else{
+                    TaskBind taskBind = list.get(0);
+                    Task task = taskMapper.selectById(taskBind.getTaskId());
+                    if(!task.getEquipCode().equals(workCell)){
+                        checkState = 2;
+                        returnResult = "NG";
+                        message = "机床与绑定不匹配";
+                        flag = 0;
+                    }
+                    taskBind.setCheckDate(new Date());
+                    taskBind.setCheckState(checkState);
+                    taskBind.setRfidUid(uid);
+                    taskBind.setRfidData(rfid);
+                    taskBind.setCheckMessage(message);
+                    taskBindMapper.updateById(taskBind);
                 }
-                TaskBind taskBind = list.get(0);
-                Task task = taskMapper.selectById(taskBind.getTaskId());
-                if(!task.getEquipCode().equals(workCell)){
-                    checkState = 2;
-                    returnResult = "NG";
-                    message = "机床与绑定不匹配";
-                    flag = 0;
-                }
-                taskBind.setCheckDate(new Date());
-                taskBind.setCheckState(checkState);
-                taskBind.setRfidUid(uid);
-                taskBind.setRfidData(rfid);
-                taskBind.setCheckMessage(message);
-                taskBindMapper.updateById(taskBind);
                 //写入结果到PLC
                 byte[] cc = returnResult.getBytes();
                 int v1 = cc[0] >= 0 ? ((int) (cc[0])) : cc[0] + 256;
                 int v2 = cc[1] >= 0 ? ((int) (cc[1])) : cc[1] + 256;
                 tcpWriter.modbusWriteWithTCP(CommandConstant.CHECK_RESULT, new short[]{(short) (v1 * 256 + v2)});
             }
-
         } catch (Exception e) {
             message = e.getMessage();
         } finally {

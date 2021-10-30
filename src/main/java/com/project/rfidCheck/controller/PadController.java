@@ -58,4 +58,18 @@ public class PadController {
     public String selectTaskDetail(@RequestParam Map<String, String> map) {
         return taskService.selectTaskDetail(map);
     }
+
+    @PostMapping("/saveTask")
+    @CrossOrigin
+    public String saveTask(@RequestParam Map<String, String> map) {
+        return taskService.saveTaskPad(map);
+    }
+
+    @PostMapping("/selectMaxTaskByMrl")
+    @CrossOrigin
+    public String selectMaxTaskByMrl(@RequestParam Map<String, String> map) {
+        return taskService.selectMaxTaskByMrl(map);
+    }
+
+
 }

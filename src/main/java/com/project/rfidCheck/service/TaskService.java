@@ -1,9 +1,7 @@
 package com.project.rfidCheck.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.project.rfidCheck.entity.TaskBind;
 import com.project.rfidCheck.entity.Task;
-import jdk.internal.util.xml.impl.Input;
 
 import java.util.List;
 import java.util.Map;
@@ -42,5 +40,7 @@ public interface TaskService extends IService<Task> {
 
     String selectTaskDetail(Map<String, String> map);
 
+    String saveTaskPad(Map<String, String> map);
 
+    String selectMaxTaskByMrl(Map<String, String> map);
 }

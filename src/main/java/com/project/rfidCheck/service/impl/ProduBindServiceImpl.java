@@ -110,7 +110,7 @@ public class ProduBindServiceImpl extends ServiceImpl<ProduBindMapper, ProduBind
 
     @Override
     public String daleteProdu(Map<String, String> map) {
-        produBindMapper.deleteById(map.get("id").toString());
+        produBindMapper.deleteById(map.get("id"));
         return "删除成功";
     }
 

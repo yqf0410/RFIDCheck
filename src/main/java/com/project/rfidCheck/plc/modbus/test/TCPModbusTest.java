@@ -114,7 +114,7 @@ public class TCPModbusTest
 
     public static void main(String[] args)
     {
-        TCPModbusTest.modbusReadWithTCP("192.168.1.8", 502, 1, 500, 4);
-        TCPModbusTest.modbusWriteWithTCP("192.168.1.8", 502, 1, 500, new short[]{2, 4, 6, 8});
+        TCPModbusTest.modbusReadWithTCP("192.168.0.1", 503, 2, 0, 1);
+//        TCPModbusTest.modbusWriteWithTCP("192.168.0.1", 502, 1, 500, new short[]{2, 4, 6, 8});
     }
 }
